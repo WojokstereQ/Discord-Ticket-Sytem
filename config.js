@@ -7,6 +7,6 @@ module.exports = {
         staff: '1129469693233737918', // ← Insert Staff Role to be pinged upon ticket creation.
     },
     logs: {
-        logschannel: '' // ← Insert Ticket Logs Channel ID.
+        logschannel: '1129581861774049330' // ← Insert Ticket Logs Channel ID.
     }
 };
