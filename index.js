@@ -1,5 +1,66 @@
-const { Client, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, GatewayIntentBits, Partials, time, PermissionsBitField, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, EmbedBuilder,GatewayIntentBits,ActivityType, StringSelectMenuBuilder, ActionRowBuilder, GatewayIntentBits, Partials, time, PermissionsBitField, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
+require('dotenv').config2();
+const express = require('express');
+const path = require('path');
 
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds
+  ],
+});
+
+const app = express();
+const port = 3000;
+app.get('/', (req, res) => {
+  const imagePath = path.join(__dirname, 'index.html');
+  res.sendFile(imagePath);
+});
+app.listen(port, () => {
+  console.log('\x1b[36m[ SERVER ]\x1b[0m', '\x1b[32m SH : http://localhost:' + port + ' ✅\x1b[0m');
+});
+
+const statusMessages = ["Daj bliczka..", "🎮 Playing GTA VI", "Zaobserwuj nas na tiktok'u: @gta.deals"];
+const statusTypes = [ 'dnd', 'idle'];
+let currentStatusIndex = 0;
+let currentTypeIndex = 0;
+
+async function login() {
+  try {
+    await client.login(process.env.TOKEN);
+    console.log('\x1b[36m[ LOGIN ]\x1b[0m', `\x1b[32mLogged in as: ${client.user.tag} ✅\x1b[0m`);
+    console.log('\x1b[36m[ INFO ]\x1b[0m', `\x1b[35mBot ID: ${client.user.id} \x1b[0m`);
+    console.log('\x1b[36m[ INFO ]\x1b[0m', `\x1b[34mConnected to ${client.guilds.cache.size} server(s) \x1b[0m`);
+  } catch (error) {
+    console.error('\x1b[31m[ ERROR ]\x1b[0m', 'Failed to log in:', error);
+    process.exit(1);
+  }
+}
+
+function updateStatus() {
+  const currentStatus = statusMessages[currentStatusIndex];
+  const currentType = statusTypes[currentTypeIndex];
+  client.user.setPresence({
+    activities: [{ name: currentStatus, type: ActivityType.Custom }],
+    status: currentType,
+  });
+  console.log('\x1b[33m[ STATUS ]\x1b[0m', `Updated status to: ${currentStatus} (${currentType})`);
+  currentStatusIndex = (currentStatusIndex + 1) % statusMessages.length;
+  currentTypeIndex = (currentTypeIndex + 1) % statusTypes.length;
+}
+
+function heartbeat() {
+  setInterval(() => {
+    console.log('\x1b[35m[ HEARTBEAT ]\x1b[0m', `Bot is alive at ${new Date().toLocaleTimeString()}`);
+  }, 30000);
+}
+
+client.once('ready', () => {
+  console.log('\x1b[36m[ INFO ]\x1b[0m', `\x1b[34mPing: ${client.ws.ping} ms \x1b[0m`);
+  updateStatus();
+  setInterval(updateStatus, 10000);
+  heartbeat();
+});
 const client = new Client({
   intents: [
         GatewayIntentBits.Guilds,
@@ -71,14 +132,14 @@ client.on("messageCreate", async (message) => {
 
 *To ensure prompt assistance, please click on one of the buttons below to open a ticket in the category that best fits your inquiry. Our dedicated support team is ready to help you with any questions or issues you may encounter. Choose the appropriate category, and we'll get back to you as soon as possible.*
 
-🚀 **General Inquiry:** For general questions or information.
+🛠️ **Pomoc:** W przypadku ogólnych pytań lub informacji.
 
-🛠️ **Premium Support:** Inquire about one of our products or services.
+💸 **Zakupy:** Zapytaj o jeden z naszych produktów lub usług.
 
-*Thank you for reaching out to us! Your satisfaction is our priority.*`
+*Dziękujemy za kontakt! Twoja satysfakcja jest naszym priorytetem.*`
         )
-        .setFooter({ text: `${message.guild.name} | Made with ❤️ by sparks.js`, iconURL: message.guild.iconURL() })
-        .setColor("#842abe");
+        .setFooter({ text: `${message.guild.name} | Made with ❤️ by GTADEALS`, iconURL: message.guild.iconURL() })
+        .setColor("#e87a59");
 
       message.channel.send({
         embeds: [ticketmsg],
@@ -107,26 +168,26 @@ client.on("interactionCreate", async (interaction) => {
       if (interaction.customId === "support" || interaction.customId === "premium") {
         const row2 = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setLabel("⚙️ Manage")
-            .setCustomId("close")
+            .setLabel("⚙️ Zarządzaj")
+            .setCustomId("Zamknij")
             .setStyle(ButtonStyle.Primary)
         );
 
         const supportmsg = new EmbedBuilder()
-          .setTitle(`${interaction.user.displayName}'s Support Ticket`)
+          .setTitle(`${interaction.user.displayName}'s Ticket`)
           .setDescription(
-            "**Hello!**\nPlease provide a detailed description of your query, and one of our team members will assist you shortly."
+            "**Witamy!**\nProszę podać szczegółowy opis swojego zapytania, a jeden z członków naszego zespołu wkrótce Ci pomoże."
           )
           .setFooter({ text: `User ID: ${interaction.user.id}` })
-          .setColor("#2a043b");
+          .setColor("#cc5a4b");
 
         const premiummsg = new EmbedBuilder()
           .setTitle(`${interaction.user.displayName}'s Premium Ticket`)
           .setDescription(
-            "**Hello there!**\nNeed assistance with our premium features? Feel free to share details about your inquiry, and our team will get back to you shortly. Your satisfaction is our priority!"
+            "**Witajcie!**\nPotrzebujesz pomocy dotyczącej naszego sklepu? Podziel się szczegółami swojego zapytania, a nasz zespół wkrótce się z Tobą skontaktuje. Twoja satysfakcja jest naszym priorytetem!"
           )
           .setFooter({ text: `User ID: ${interaction.user.id}` })
-          .setColor("#2a043b");
+          .setColor("#cc5a4b");
 
         if (interaction.customId === "support") {
           const ticket = await interaction.guild.channels.create({
@@ -324,3 +385,4 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(process.env.TOKEN);
+
