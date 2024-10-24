@@ -1,4 +1,4 @@
-const { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GatewayIntentBits, Partials, PermissionsBitField, ChannelType, ActivityType } = require('discord.js');
+const { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GatewayIntentBits, Partials, PermissionsBitField, ChannelType } = require('discord.js');
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
@@ -13,7 +13,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.User],
 });
 
-// Express setup
+// Ustawienia Express
 const app = express();
 const port = 3000;
 
@@ -23,10 +23,10 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log('\x1b[36m[ SERVER ]\x1b[0m', '\x1b[32m SH : http://localhost:' + port + ' ✅\x1b[0m');
+  console.log('\x1b[36m[ SERWER ]\x1b[0m', '\x1b[32m SH : http://localhost:' + port + ' ✅\x1b[0m');
 });
 
-// Ticket system configurations
+// Konfiguracja systemu ticketów
 const config = require("./config.js");
 const owner = config.modmail.ownerID;
 const supportcat = config.modmail.supportId;
@@ -34,60 +34,34 @@ const premiumcat = config.modmail.premiumId;
 const whitelistrole = config.modmail.whitelist;
 const staffID = config.modmail.staff;
 const log = config.logs.logschannel;
-const cooldowns = new Map(); // Map to track cooldowns
+const cooldowns = new Map(); // Mapa do śledzenia cooldownów
 
 client.once('ready', () => {
-  console.log(client.user.username + ' is ready!');
-  console.log('== The logs are starting from here ==');
-  updateStatus();
-  setInterval(updateStatus, 10000);
-  heartbeat();
+  console.log(client.user.username + ' jest gotowy!');
 });
 
-const statusMessages = ["Daj bliczka..", "🎮 Playing GTA VI", "Zaobserwuj nas na tiktok'u: @gta.deals"];
-const statusTypes = ['dnd', 'idle'];
-let currentStatusIndex = 0;
-let currentTypeIndex = 0;
-
-async function updateStatus() {
-  const currentStatus = statusMessages[currentStatusIndex];
-  const currentType = statusTypes[currentTypeIndex];
-  client.user.setPresence({
-    activities: [{ name: currentStatus, type: ActivityType.Custom }],
-    status: currentType,
-  });
-  console.log('\x1b[33m[ STATUS ]\x1b[0m', `Updated status to: ${currentStatus} (${currentType})`);
-  currentStatusIndex = (currentStatusIndex + 1) % statusMessages.length;
-  currentTypeIndex = (currentTypeIndex + 1) % statusTypes.length;
-}
-
-function heartbeat() {
-  setInterval(() => {
-    console.log('\x1b[35m[ HEARTBEAT ]\x1b[0m', `Bot is alive at ${new Date().toLocaleTimeString()}`);
-  }, 30000);
-}
-
-// Ticket command handling
+// Obsługa poleceń ticketów
 client.on("messageCreate", async (message) => {
   if (message.author.id === owner && message.content.toLowerCase().startsWith("!ticket-embed")) {
     message.delete();
     const row = new ActionRowBuilder()
       .addComponents(
-        new ButtonBuilder().setLabel("📨 Support").setStyle(ButtonStyle.Secondary).setCustomId("support"),
-        new ButtonBuilder().setLabel("💸 Premium").setStyle(ButtonStyle.Secondary).setCustomId("premium")
+        new ButtonBuilder().setLabel("📨 Pomoc").setStyle(ButtonStyle.Secondary).setCustomId("support"),
+        new ButtonBuilder().setLabel("💸 Zakup").setStyle(ButtonStyle.Secondary).setCustomId("premium")
       );
 
     const ticketmsg = new EmbedBuilder()
-      .setTitle(`${message.guild.name}'s Ticket System`)
-      .setDescription(`**Welcome to our Support Ticket System!** 🎫
-*To ensure prompt assistance, please click on one of the buttons below to open a ticket...*`)
-      .setFooter({ text: `${message.guild.name} | Made with ❤️ by GTADEALS`, iconURL: message.guild.iconURL() })
+      .setTitle(`${message.guild.name} ➜ System Ticketów`)
+      .setDescription(`**Witamy w naszym systemie wsparcia!** 🎫
+>>> - Jeżeli potrzebujesz pomocy ogólnej, lub masz pytania, skorzystaj z opcji **__Pomoc__**.
+- Jeżeli chcesz złożyć zamówienie bądź dowiedzieć się o szczegółach produktów, skorzystaj z opcji **__Zakup__**.`)
+      .setFooter({ text: `${message.guild.name} | Stworzone z ❤️ przez zespół GTADEALS.`, iconURL: message.guild.iconURL() })
       .setColor("#e87a59");
 
     message.channel.send({ embeds: [ticketmsg], components: [row] });
   }
 
-  // Setup command
+  // Komenda do ustawienia
   if (message.author.bot || !message.guild) return;
   if (message.content.toLowerCase() === `!setup`) {
     const generalTicketsCategory = await message.guild.channels.create({ name: 'General Tickets', type: ChannelType.GuildCategory });
@@ -101,21 +75,94 @@ client.on("messageCreate", async (message) => {
       permissionOverwrites: [{ id: message.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }],
     });
 
-    message.channel.send('Ticket setup completed!');
+    message.channel.send('Konfiguracja ticketów zakończona!');
   }
 });
 
-// Interaction handling for tickets
+// Obsługa interakcji dla ticketów
 client.on("interactionCreate", async (interaction) => {
   try {
     if (interaction.isButton()) {
-      // Button interaction logic here...
-      // Handle ticket creation, cooldowns, etc.
+      const userId = interaction.user.id;
+      const userCooldown = cooldowns.get(userId) || 0;
+      const currentTime = Date.now();
+
+      if (userCooldown > currentTime && (interaction.customId === "support" || interaction.customId === "premium")) {
+        const remainingTime = Math.ceil((userCooldown - currentTime) / 1000);
+        interaction.reply({
+          content: `Jesteś na cooldownie. Poczekaj ${remainingTime} sekund przed otwarciem kolejnego ticketa.`,
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel("⚙️ Zarządzaj").setCustomId("close").setStyle(ButtonStyle.Primary)
+      );
+
+      const ticketChannelName = `ticket-${interaction.user.username}`;
+      let ticketCategory;
+      let ticketDescription;
+
+      if (interaction.customId === "support") {
+        ticketCategory = supportcat;
+        ticketDescription = `**Cześć!**\nProszę podaj szczegółowy opis swojego zapytania, a jeden z naszych członków zespołu pomoże Ci wkrótce.`;
+      } else if (interaction.customId === "premium") {
+        ticketCategory = premiumcat;
+        ticketDescription = `**Witaj!**\nPotrzebujesz pomocy z naszymi funkcjami premium? Podziel się szczegółami swojego zapytania, a nasz zespół skontaktuje się z Tobą wkrótce.`;
+      }
+
+      const ticket = await interaction.guild.channels.create({
+        name: ticketChannelName,
+        type: ChannelType.GuildText,
+        parent: ticketCategory,
+        permissionOverwrites: [
+          {
+            id: interaction.user.id,
+            allow: [
+              PermissionsBitField.Flags.ViewChannel,
+              PermissionsBitField.Flags.SendMessages,
+            ],
+          },
+          {
+            id: whitelistrole,
+            allow: [
+              PermissionsBitField.Flags.ViewChannel,
+              PermissionsBitField.Flags.SendMessages,
+            ],
+          },
+          {
+            id: interaction.guild.id,
+            deny: [PermissionsBitField.Flags.ViewChannel],
+          },
+        ],
+      });
+
+      interaction.reply({
+        content: `<#${ticket.id}> został utworzony dla Ciebie.`,
+        ephemeral: true,
+      });
+
+      client.channels.cache.get(log).send(`# Nowy Ticket\n\n**Użytkownik:** <@${interaction.user.id}> otworzył <#${ticket.id}>`);
+
+      ticket.send({
+        content: `<@&${staffID}>\n**==========================**`,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`${interaction.user.displayName}'s Ticket`)
+            .setDescription(ticketDescription)
+            .setFooter({ text: `User ID: ${interaction.user.id}` })
+            .setColor("#2a043b")
+        ],
+        components: [row2],
+      });
+
+      cooldowns.set(userId, currentTime + 2 * 60 * 60 * 1000); // cooldown 2 godziny
     }
   } catch (e) {
     console.error(e);
   }
 });
 
-// Login
+// Logowanie
 client.login(process.env.TOKEN);
